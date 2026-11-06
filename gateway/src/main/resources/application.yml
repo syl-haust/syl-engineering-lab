@@ -1,0 +1,78 @@
+server:
+  port: 9000
+
+spring:
+  application:
+    name: lab-gateway
+  config:
+    # Nacos 配置中心：启动时会拉取 lab-gateway.yaml 与 lab-gateway-ratelimit.yaml
+    import:
+      - optional:nacos:lab-gateway.yaml?group=DEFAULT_GROUP&refreshEnabled=true
+      - optional:nacos:lab-gateway-ratelimit.yaml?group=DEFAULT_GROUP&refreshEnabled=true
+  cloud:
+    nacos:
+      discovery:
+        server-addr: 127.0.0.1:8848
+      config:
+        server-addr: 127.0.0.1:8848
+        file-extension: yaml
+    gateway:
+      discovery:
+        locator:
+          enabled: false
+      routes:
+        # 业务服务的所有接口走这里：lb:// 表示从 Nacos 取实例列表做负载均衡
+        - id: app-route
+          uri: lb://lab-app
+          predicates:
+            - Path=/api/**
+        # 静态页面直接转发给 app（不走限流熔断的业务接口也在这里）
+        - id: static-route
+          uri: lb://lab-app
+          predicates:
+            - Path=/,/index.html,/app.js,/docs/**
+  data:
+    redis:
+      host: 127.0.0.1
+      port: 6379
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info,refresh
+
+# ---------- 限流与熔断的默认值（会被 Nacos 配置覆盖）----------
+lab:
+  ratelimit:
+    enabled: true
+    rules:
+      # 下单接口：按用户限流，稳态 2 次/秒，允许突发 5 次
+      - path: /api/order/**
+        dimension: USER
+        capacity: 5
+        refill-per-second: 2
+      # 登录/刷新：按 IP，防暴力破解
+      - path: /api/auth/**
+        dimension: IP
+        capacity: 10
+        refill-per-second: 5
+      # 兜底：其它接口按用户 20 次/秒
+      - path: /api/**
+        dimension: USER
+        capacity: 20
+        refill-per-second: 10
+
+  circuitbreaker:
+    enabled: true
+    paths:
+      - /api/**
+    minimum-requests: 5
+    failure-rate-threshold: 0.5
+    wait-duration-in-open-state-millis: 10000
+    half-open-permits: 2
+    slow-call-millis: 1000
+
+logging:
+  level:
+    com.syl.lab.gateway: info

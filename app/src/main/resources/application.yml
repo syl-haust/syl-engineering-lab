@@ -1,0 +1,48 @@
+spring:
+  application:
+    # 服务名：网关通过 Nacos 用这个名字发现实例（lb://lab-app）
+    name: lab-app
+  cloud:
+    nacos:
+      discovery:
+        server-addr: 127.0.0.1:8848
+  datasource:
+    url: jdbc:mysql://127.0.0.1:3306/syl_lab?useUnicode=true&characterEncoding=utf8&serverTimezone=Asia/Shanghai&useSSL=false&allowPublicKeyRetrieval=true
+    username: root
+    password: "123456"
+    hikari:
+      maximum-pool-size: 20
+  data:
+    redis:
+      host: 127.0.0.1
+      port: 6379
+  rabbitmq:
+    host: 127.0.0.1
+    port: 5672
+    username: guest
+    password: guest
+    publisher-confirm-type: correlated
+    publisher-returns: true
+    listener:
+      simple:
+        acknowledge-mode: auto
+        default-requeue-rejected: true
+        retry:
+          enabled: true
+          max-attempts: 3
+          initial-interval: 1000ms
+          multiplier: 2
+
+server:
+  port: 8080
+
+lab:
+  auth:
+    # 生产环境必须放环境变量，不能写在代码库里
+    secret: ${LAB_JWT_SECRET:syl-engineering-lab-demo-secret-key-please-change-in-prod}
+    access-ttl-minutes: 15
+    refresh-ttl-days: 7
+
+logging:
+  level:
+    com.syl.lab: info

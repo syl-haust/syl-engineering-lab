@@ -1,0 +1,17 @@
+target/
+!.mvn/wrapper/maven-wrapper.jar
+*.log
+.idea/
+*.iml
+.vscode/
+.DS_Store
+.env
+
+# 本地临时脚本（AI 辅助生成的调试脚本，不入库）
+.dsh-*.ps1
+target/*.txt
+target/*.json
+docs/shot.log
+
+# 个人学习笔记 / 复盘文档，不进入开源仓库
+local-notes/

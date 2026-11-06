@@ -1,0 +1,631 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>syl-engineering-lab · 工程化实践演示</title>
+<style>
+  :root {
+    --bg: #0b0e14; --panel: #121826; --panel-2: #182131; --border: #243147;
+    --text: #e6edf7; --muted: #8b9ab1; --accent: #4f8cff; --accent-2: #7c5cff;
+    --ok: #34d399; --warn: #fbbf24; --err: #f87171;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body {
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", "PingFang SC", "Microsoft YaHei", sans-serif;
+    background: radial-gradient(1200px 600px at 20% -10%, #1a2742 0%, var(--bg) 55%);
+    color: var(--text); min-height: 100vh; padding: 26px 20px 60px;
+  }
+  .wrap { max-width: 1180px; margin: 0 auto; }
+  h1 {
+    font-size: 25px; font-weight: 700;
+    background: linear-gradient(90deg, #fff, #8fb4ff);
+    -webkit-background-clip: text; -webkit-text-fill-color: transparent;
+  }
+  .sub { color: var(--muted); font-size: 13.5px; margin-top: 8px; line-height: 1.7; }
+  .sub code { color: #9fc2ff; background: #172033; padding: 1px 6px; border-radius: 4px; }
+
+  .statusbar {
+    display: flex; gap: 16px; flex-wrap: wrap; align-items: center;
+    margin-top: 16px; padding: 10px 14px; border-radius: 10px;
+    background: #101826; border: 1px solid var(--border); font-size: 12.5px;
+  }
+  .dot { width: 8px; height: 8px; border-radius: 50%; display: inline-block; margin-right: 6px; }
+  .dot.on { background: var(--ok); box-shadow: 0 0 8px var(--ok); }
+  .dot.off { background: var(--err); }
+  .dot.wait { background: var(--warn); }
+
+  .tabs { display: flex; gap: 8px; margin: 22px 0 18px; border-bottom: 1px solid var(--border); }
+  .tab {
+    padding: 11px 20px; cursor: pointer; font-size: 14px; font-weight: 600;
+    color: var(--muted); border: none; background: none; border-bottom: 2px solid transparent;
+    transition: all .15s; margin-bottom: -1px;
+  }
+  .tab:hover { color: #b8cdf0; }
+  .tab.active { color: #fff; border-bottom-color: var(--accent); }
+  .pane { display: none; }
+  .pane.active { display: block; animation: fade .18s ease; }
+  @keyframes fade { from { opacity: 0; transform: translateY(4px); } to { opacity: 1; transform: none; } }
+
+  .grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(340px, 1fr)); gap: 18px; }
+  .card {
+    background: linear-gradient(180deg, var(--panel), var(--panel-2));
+    border: 1px solid var(--border); border-radius: 14px; padding: 20px;
+    display: flex; flex-direction: column; box-shadow: 0 8px 30px rgba(0,0,0,.25);
+  }
+  .card h2 { font-size: 15.5px; display: flex; align-items: center; gap: 8px; margin-bottom: 6px; flex-wrap: wrap; }
+  .tag {
+    font-size: 11px; padding: 2px 8px; border-radius: 999px;
+    background: rgba(79,140,255,.15); color: #8fb4ff; border: 1px solid rgba(79,140,255,.35); font-weight: 500;
+  }
+  .tag.green { background: rgba(52,211,153,.13); color: #6ee7b7; border-color: rgba(52,211,153,.35); }
+  .desc { font-size: 12.5px; color: var(--muted); line-height: 1.75; margin: 8px 0 14px; }
+  .desc b { color: #b8cdf0; }
+
+  label { display: block; font-size: 12px; color: var(--muted); margin: 10px 0 5px; }
+  input {
+    width: 100%; padding: 9px 11px; border-radius: 8px; border: 1px solid var(--border);
+    background: #0d1420; color: var(--text);
+    font-family: ui-monospace, "Cascadia Code", Consolas, monospace; font-size: 12.5px; outline: none;
+    transition: border-color .15s, box-shadow .15s;
+  }
+  input:focus { border-color: var(--accent); box-shadow: 0 0 0 3px rgba(79,140,255,.16); }
+
+  .row { display: flex; gap: 10px; flex-wrap: wrap; margin-top: 12px; }
+  button {
+    flex: 1 1 auto; min-width: 108px; padding: 10px 14px; border-radius: 9px;
+    border: 1px solid transparent; color: #fff; font-size: 12.5px; font-weight: 600;
+    cursor: pointer; transition: transform .1s, filter .15s;
+    background: linear-gradient(135deg, var(--accent), var(--accent-2));
+  }
+  button:hover { filter: brightness(1.12); }
+  button:active { transform: translateY(1px); }
+  button.ghost { background: #16203180; border-color: var(--border); color: #c6d4ea; }
+  button.ghost:hover { border-color: var(--accent); color: #fff; }
+  button:disabled { opacity: .5; cursor: not-allowed; }
+
+  .result {
+    margin-top: 12px; background: #0a0f18; border: 1px solid var(--border);
+    border-radius: 9px; padding: 12px;
+    font-family: ui-monospace, Consolas, monospace; font-size: 11.5px; line-height: 1.7;
+    white-space: pre-wrap; word-break: break-all;
+    max-height: 280px; overflow: auto; color: #b8c7de;
+  }
+  .result.ok { border-color: rgba(52,211,153,.4); color: #a7f3d0; }
+  .result.err { border-color: rgba(248,113,113,.45); color: #fecaca; }
+  .result .k { color: #7c9bd1; }
+  .result .v-ok { color: #34d399; }
+  .result .v-err { color: #f87171; }
+  .result .v-warn { color: #fbbf24; }
+
+  .hint {
+    font-size: 11.5px; color: var(--muted); margin-top: 10px;
+    padding: 8px 10px; background: #0e1624;
+    border-left: 2px solid var(--accent); border-radius: 0 6px 6px 0; line-height: 1.7;
+  }
+  .hint:empty { display: none; }
+
+  .msgstream {
+    margin-top: 10px; background: #0a0f18; border: 1px solid var(--border);
+    border-radius: 9px; padding: 0; max-height: 240px; overflow: auto;
+  }
+  .msg { padding: 8px 12px; border-bottom: 1px solid #161f2e; font-size: 11.5px;
+         font-family: ui-monospace, Consolas, monospace; }
+  .msg:last-child { border-bottom: none; }
+  .msg .t { color: #5f6d85; margin-right: 8px; }
+  .msg.push { color: #6ee7b7; background: rgba(52,211,153,.06); }
+  .msg.sys { color: #9fc2ff; }
+
+  .breaker {
+    display: flex; align-items: center; gap: 10px; margin: 12px 0;
+    padding: 12px; border-radius: 9px; background: #0d1420; border: 1px solid var(--border);
+  }
+  .breaker .state { font-size: 15px; font-weight: 700; font-family: ui-monospace, monospace; letter-spacing: .5px; }
+  .state.CLOSED { color: var(--ok); }
+  .state.OPEN { color: var(--err); }
+  .state.HALF_OPEN { color: var(--warn); }
+
+  footer { margin-top: 34px; text-align: center; color: #5f6d85; font-size: 12px; line-height: 1.8; }
+  a { color: #8fb4ff; text-decoration: none; }
+  a:hover { text-decoration: underline; }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header>
+    <h1>syl-engineering-lab</h1>
+    <p class="sub">
+      五个生产级工程实践的独立实现：双 Token / 本地消息表 / 声明式幂等 / 网关限流熔断 / WebSocket 推送。<br>
+      所有按钮都<b>真实调用后端</b>，不是静态演示。默认账号 <code>demo</code> / <code>123456</code><br>
+      两个模块：<code>app</code>（业务 :8080）、<code>gateway</code>（网关 :9000）
+    </p>
+    <div class="statusbar">
+      <span><span id="dotApi" class="dot wait"></span>业务服务 <span id="txtApi">检测中…</span></span>
+      <span><span id="dotGw" class="dot wait"></span>网关 <span id="txtGw">检测中…</span></span>
+      <span><span id="dotWs" class="dot off"></span>WebSocket <span id="txtWs">未连接</span></span>
+      <span id="txtBreaker" style="margin-left:auto"></span>
+    </div>
+  </header>
+
+  <div class="tabs">
+    <button class="tab active" data-pane="pane-a">业务能力 · 认证 / 幂等 / 消息 / 实时推送</button>
+    <button class="tab" data-pane="pane-b">网关能力 · 限流 / 熔断</button>
+  </div>
+
+  <div class="pane active" id="pane-a">
+    <div class="grid">
+
+      <section class="card">
+        <h2><span>① 双 Token 认证</span><span class="tag">Access 15m / Refresh 7d</span></h2>
+        <p class="desc">JWT 无状态无法吊销，拆成短命 Access + 长命 Refresh。refresh <b>轮换 + Lua 原子删除</b>防并发重放。</p>
+        <label>用户名</label><input id="username" value="demo">
+        <label>密码</label><input id="password" type="password" value="123456">
+        <div class="row">
+          <button onclick="doLogin()">登录</button>
+          <button class="ghost" onclick="doRefresh()">刷新一次</button>
+        </div>
+        <div class="row">
+          <button class="ghost" onclick="doConcurrentRefresh()">并发刷新 ×3</button>
+          <button class="ghost" onclick="doLogout()">登出</button>
+        </div>
+        <div id="authResult" class="result">等待操作…</div>
+        <p class="hint" id="authHint"></p>
+      </section>
+
+      <section class="card">
+        <h2><span>② 声明式幂等</span><span class="tag">@Idempotent</span></h2>
+        <p class="desc">请求头 Key + Redis Lua 三态 + DB 唯一索引三层。<b>同一个 key 再点一次不会创建新订单</b>，而是回放第一次结果。</p>
+        <label>Idempotency-Key</label><input id="idemKey">
+        <label>SKU ID</label><input id="skuId" value="1001">
+        <div class="row">
+          <button onclick="doSubmit()">提交订单</button>
+          <button class="ghost" onclick="doSubmitTwice()">连续提交 2 次（同 key）</button>
+        </div>
+        <div class="row"><button class="ghost" onclick="newIdemKey()">换一个 Key</button></div>
+        <div id="idemResult" class="result">等待操作…</div>
+        <p class="hint" id="idemHint"></p>
+      </section>
+
+      <section class="card">
+        <h2><span>③ 可靠异步下单</span><span class="tag">Outbox + RabbitMQ</span></h2>
+        <p class="desc">订单与消息<b>同事务落库</b>，投递失败按指数退避补偿。30 分钟未支付由<b>延时队列 + 死信</b>自动取消，不扫表。</p>
+        <div class="row"><button onclick="doOrderAndWatch()">下单并观察</button></div>
+        <div class="row">
+          <button class="ghost" onclick="doPollOrders()">刷新订单状态</button>
+          <button class="ghost" onclick="window.open('http://localhost:15672','_blank')">MQ 管理台</button>
+        </div>
+        <div id="mqResult" class="result">等待操作…</div>
+        <p class="hint" id="mqHint"></p>
+      </section>
+
+      <section class="card">
+        <h2><span>④ WebSocket 实时推送</span><span class="tag green">MQ → 浏览器</span></h2>
+        <p class="desc">订单状态变化不再靠轮询：MQ 消费后经 WebSocket <b>主动推给用户</b>。握手用 Access Token 鉴权，被踢下线的人连不上。</p>
+        <div class="row">
+          <button onclick="connectWs()">连接 WebSocket</button>
+          <button class="ghost" onclick="disconnectWs()">断开</button>
+        </div>
+        <div class="row"><button class="ghost" onclick="pushTest()">发送心跳 PING</button></div>
+        <label>消息流</label>
+        <div class="msgstream" id="wsStream">
+          <div class="msg sys"><span class="t">--:--:--</span>未连接，点击「连接 WebSocket」</div>
+        </div>
+        <p class="hint" id="wsHint"></p>
+      </section>
+
+    </div>
+  </div>
+
+  <div class="pane" id="pane-b">
+    <div class="grid">
+
+      <section class="card">
+        <h2><span>④ 令牌桶限流</span><span class="tag">Redis Lua · 网关层</span></h2>
+        <p class="desc">网关用 <b>Redis + Lua 实现令牌桶</b>：稳态速率 + 突发容量，按用户 / IP / 接口三维度组合 key。阈值从 <b>Nacos 热更新</b>，改完不用重启。</p>
+        <label>连续请求次数</label><input id="rlCount" value="20">
+        <div class="row"><button onclick="doRateLimitTest()">通过网关连发请求</button></div>
+        <div class="row"><button class="ghost" onclick="openNacos()">Nacos 控制台</button></div>
+        <div id="rlResult" class="result">等待操作…</div>
+        <p class="hint" id="rlHint"></p>
+      </section>
+
+      <section class="card">
+        <h2><span>⑤ 熔断降级</span><span class="tag">CLOSED / OPEN / HALF_OPEN</span></h2>
+        <p class="desc">下游故障时<b>不再打过去</b>，直接返回降级响应。打开后等待一段时间进入半开，放行少量试探，全成功才恢复。</p>
+        <div class="breaker"><span>当前状态</span><span class="state CLOSED" id="cbState">CLOSED</span></div>
+        <div class="row">
+          <button onclick="queryBreaker()">查询状态</button>
+          <button class="ghost" onclick="doImpactTest()">压力测试 10 次</button>
+        </div>
+        <div id="cbResult" class="result">等待操作…</div>
+        <p class="hint" id="cbHint"></p>
+      </section>
+
+    </div>
+  </div>
+
+  <footer>
+    <a href="http://localhost:8848/nacos" target="_blank" rel="noopener">Nacos 控制台</a> ·
+    <a href="http://localhost:15672" target="_blank" rel="noopener">RabbitMQ 管理台</a> ·
+    遇到 401 请先在标签页 A 点「登录」<br>
+    <a href="https://github.com/" target="_blank" rel="noopener">项目仓库</a>
+  </footer>
+</div>
+
+<script>
+const GW  = 'http://localhost:9000';
+const APP = 'http://localhost:8080';
+const state = { accessToken: null, refreshToken: null, ws: null };
+const $ = (id) => document.getElementById(id);
+
+function newUuid() {
+  return (crypto.randomUUID && crypto.randomUUID()) ||
+    'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, c => {
+      const r = Math.random() * 16 | 0;
+      return (c === 'x' ? r : (r & 0x3 | 0x8)).toString(16);
+    });
+}
+
+function render(el, data, cls) {
+  el.className = 'result ' + (cls || '');
+  if (typeof data === 'string') { el.textContent = data; return; }
+  const lines = [];
+  const walk = (o, ind) => {
+    for (const k of Object.keys(o)) {
+      const v = o[k];
+      if (v !== null && typeof v === 'object' && !Array.isArray(v)) {
+        lines.push(ind + '<span class="k">' + k + ':</span>'); walk(v, ind + '  ');
+      } else {
+        let c = '';
+        if (k === 'success' || k === 'logout') c = v ? 'v-ok' : 'v-err';
+        if (k === 'code') c = v === 'OK' ? 'v-ok' : 'v-warn';
+        if (k === 'error') c = 'v-err';
+        lines.push(ind + '<span class="k">' + k + ':</span> <span class="' + c + '">' +
+          (Array.isArray(v) ? JSON.stringify(v) : v) + '</span>');
+      }
+    }
+  };
+  walk(data, '');
+  el.innerHTML = lines.join('\n');
+}
+
+async function api(base, path, opts) {
+  opts = opts || {};
+  const headers = Object.assign({ 'Content-Type': 'application/json' }, opts.headers || {});
+  if (state.accessToken) headers['Authorization'] = 'Bearer ' + state.accessToken;
+  const res = await fetch(base + path, Object.assign({}, opts, { headers }));
+  const text = await res.text();
+  let body; try { body = text ? JSON.parse(text) : {}; } catch { body = text; }
+  return { status: res.status, ok: res.ok, body, headers: res.headers };
+}
+
+async function checkHealth() {
+  try {
+    const r = await fetch(APP + '/api/health', { cache: 'no-store' });
+    $('dotApi').className = 'dot ' + (r.ok ? 'on' : 'off');
+    $('txtApi').textContent = r.ok ? '在线' : '异常';
+  } catch { $('dotApi').className = 'dot off'; $('txtApi').textContent = '离线'; }
+  try {
+    const r = await fetch(GW + '/gateway/state', { cache: 'no-store' });
+    const j = await r.json();
+    $('dotGw').className = 'dot ' + (r.ok ? 'on' : 'off');
+    $('txtGw').textContent = r.ok ? '在线 :9000' : '异常';
+    setBreakerState(j.circuitState);
+  } catch { $('dotGw').className = 'dot off'; $('txtGw').textContent = '离线'; }
+}
+checkHealth();
+setInterval(checkHealth, 8000);
+
+document.querySelectorAll('.tab').forEach(function (t) {
+  t.addEventListener('click', function () {
+    document.querySelectorAll('.tab').forEach(function (x) { x.classList.remove('active'); });
+    document.querySelectorAll('.pane').forEach(function (x) { x.classList.remove('active'); });
+    t.classList.add('active');
+    $(t.dataset.pane).classList.add('active');
+    history.replaceState(null, '', '#' + t.dataset.pane);
+  });
+});
+
+// 支持 #pane-b 直接打开第二个标签页（方便截图和分享链接）
+(function initTabFromHash() {
+  const h = location.hash.replace('#', '');
+  if (h === 'pane-a' || h === 'pane-b') {
+    const tab = document.querySelector('.tab[data-pane="' + h + '"]');
+    if (tab) tab.click();
+  }
+})();
+
+/* ---------- ① 双 Token ---------- */
+async function doLogin() {
+  const el = $('authResult'), hint = $('authHint');
+  render(el, '登录中…');
+  const r = await api(APP, '/api/auth/login', {
+    method: 'POST',
+    body: JSON.stringify({ username: $('username').value, password: $('password').value })
+  });
+  if (!r.ok) { render(el, { status: r.status, error: r.body.error, message: r.body.message }, 'err'); return; }
+  state.accessToken = r.body.accessToken;
+  state.refreshToken = r.body.refreshToken;
+  render(el, {
+    accessToken: r.body.accessToken.slice(0, 44) + '…',
+    refreshToken: r.body.refreshToken.slice(0, 44) + '…',
+    expiresInSeconds: r.body.expiresInSeconds,
+    code: 'OK'
+  }, 'ok');
+  hint.textContent = '登录成功。可以点「并发刷新 ×3」，或去连 WebSocket。';
+}
+
+async function doRefresh() {
+  const el = $('authResult');
+  if (!state.refreshToken) { render(el, { 错误: '请先登录' }, 'err'); return; }
+  render(el, '刷新中…');
+  const r = await api(APP, '/api/auth/refresh', {
+    method: 'POST', body: JSON.stringify({ refreshToken: state.refreshToken })
+  });
+  if (!r.ok) { render(el, { status: r.status, error: r.body.error, message: r.body.message }, 'err'); return; }
+  state.accessToken = r.body.accessToken;
+  state.refreshToken = r.body.refreshToken;
+  render(el, { status: r.status, 新_accessToken: r.body.accessToken.slice(0, 44) + '…', 注意: '旧 refresh 已失效（轮换）', code: 'OK' }, 'ok');
+}
+
+async function doConcurrentRefresh() {
+  const el = $('authResult'), hint = $('authHint');
+  if (!state.refreshToken) { render(el, { 错误: '请先登录' }, 'err'); return; }
+  render(el, '3 个请求带同一个 refresh token 同时刷新…');
+  const shared = state.refreshToken;
+  const results = await Promise.all([1, 2, 3].map(function () {
+    return api(APP, '/api/auth/refresh', { method: 'POST', body: JSON.stringify({ refreshToken: shared }) });
+  }));
+  const okBody = results.filter(function (r) { return r.ok; })[0];
+  if (okBody) { state.accessToken = okBody.body.accessToken; state.refreshToken = okBody.body.refreshToken; }
+  const okCount = results.filter(function (r) { return r.ok; }).length;
+  const conflict = results.filter(function (r) { return r.status === 409; }).length;
+  const lines = ['三个请求的结果:'];
+  results.forEach(function (r, i) {
+    lines.push('  请求 ' + (i + 1) + ': ' + (r.ok ? '✅ 200 成功（获得刷新资格）'
+      : (r.status === 409 ? '⚠️ 409 已被使用（原子删除挡住重放）' : '❌ ' + r.status)));
+  });
+  lines.push('', '成功 ' + okCount + ' 个，409 ' + conflict + ' 个。');
+  lines.push('结论：只有一个拿到新 token，其余不会把用户踢下线。');
+  el.className = 'result ok';
+  el.textContent = lines.join('\n');
+  hint.textContent = okCount === 1 ? '✅ 符合预期：并发刷新只放行一个。' : '⚠️ 成功数不是 1，检查 Redis。';
+}
+
+async function doLogout() {
+  const el = $('authResult');
+  const r = await api(APP, '/api/auth/logout', { method: 'POST' });
+  state.accessToken = null; state.refreshToken = null;
+  disconnectWs();
+  render(el, { status: r.status, logout: r.body.logout, 说明: 'access / refresh 白名单均已删除' }, r.ok ? 'ok' : 'err');
+}
+
+/* ---------- ② 幂等 ---------- */
+function newIdemKey() {
+  $('idemKey').value = newUuid();
+  $('idemHint').textContent = '已生成新的 Idempotency-Key。';
+}
+newIdemKey();
+
+function submitOnce(key) {
+  return api(APP, '/api/order/submit?requestKey=' + encodeURIComponent(key), {
+    method: 'POST',
+    headers: { 'Idempotency-Key': key },
+    body: JSON.stringify({ skuId: Number($('skuId').value) || 1001, amount: 99 })
+  });
+}
+
+async function doSubmit() {
+  const el = $('idemResult'), hint = $('idemHint');
+  if (!state.accessToken) { render(el, { 错误: '请先登录' }, 'err'); return; }
+  const key = $('idemKey').value || newUuid();
+  $('idemKey').value = key;
+  render(el, '提交中…');
+  const r = await submitOnce(key);
+  render(el, { status: r.status, 订单: r.body, code: r.ok ? 'OK' : (r.body.error || 'FAIL') }, r.ok ? 'ok' : 'err');
+  hint.textContent = '再点「连续提交 2 次（同 key）」，看看是不是同一张订单。';
+}
+
+async function doSubmitTwice() {
+  const el = $('idemResult'), hint = $('idemHint');
+  if (!state.accessToken) { render(el, { 错误: '请先登录' }, 'err'); return; }
+  const key = $('idemKey').value || newUuid();
+  $('idemKey').value = key;
+  render(el, '连续提交 2 次（同 key）…');
+  const a = await submitOnce(key);
+  const b = await submitOnce(key);
+  const idA = a.ok ? a.body.id : null, idB = b.ok ? b.body.id : null;
+  const same = idA && idB && String(idA) === String(idB);
+  const lines = ['第 1 次：' + a.status + ' ' + JSON.stringify(a.body),
+                 '第 2 次：' + b.status + ' ' + JSON.stringify(b.body), ''];
+  if (same) {
+    lines.push('✅ 两次都是订单 id=' + idA + '，没有创建第二张。');
+    lines.push('   第 2 次命中 Redis DONE 状态，直接回放第 1 次的结果。');
+  } else if (b.status === 429) {
+    lines.push('⚠️ 第 2 次 429「正在处理中」—— 第 1 次还没跑完（PROCESSING 状态）。');
+  } else {
+    lines.push('⚠️ 两次 id 不同，幂等未生效。');
+  }
+  el.className = 'result ' + (same ? 'ok' : 'err');
+  el.textContent = lines.join('\n');
+  hint.textContent = same ? '✅ 幂等生效：同 key 只创建一张订单。' : '';
+}
+
+/* ---------- ③ 可靠消息 ---------- */
+async function doOrderAndWatch() {
+  const el = $('mqResult');
+  if (!state.accessToken) { render(el, { 错误: '请先登录' }, 'err'); return; }
+  const key = newUuid();
+  render(el, '下单中…');
+  const r = await api(APP, '/api/order/submit?requestKey=' + key, {
+    method: 'POST',
+    headers: { 'Idempotency-Key': key },
+    body: JSON.stringify({ skuId: 2002, amount: 199 })
+  });
+  if (!r.ok) { render(el, { status: r.status, body: r.body }, 'err'); return; }
+  const base = ['✅ 订单已创建：' + JSON.stringify(r.body), '',
+    '接下来每秒刷新一次状态：',
+    '  · status = 0（待支付）',
+    '  · 不会在 15 秒内被取消 —— 延时队列是 30 分钟', '',
+    '超时取消逻辑在 OrderConsumer.onExpire()，',
+    '想快速验证把 MqConfig 的 x-message-ttl 改成 5000。', ''].join('\n');
+  el.className = 'result';
+  el.textContent = base;
+  let left = 15;
+  const tick = async function () {
+    const o = await api(APP, '/api/order/my');
+    const order = Array.isArray(o.body) ? o.body.filter(function (x) { return String(x.id) === String(r.body.id); })[0] : null;
+    el.textContent = base + '[' + (15 - left) + 's] ' + (order ? '订单 ' + order.id + ' · status=' + order.status : '订单未找到');
+    left--;
+    if (left >= 0) setTimeout(tick, 1000);
+    else { el.className = 'result ok'; el.textContent = base + '观察结束，状态仍为 0（待支付）。'; }
+  };
+  tick();
+}
+
+async function doPollOrders() {
+  const el = $('mqResult');
+  if (!state.accessToken) { render(el, { 错误: '请先登录' }, 'err'); return; }
+  const o = await api(APP, '/api/order/my');
+  if (!o.ok) { render(el, { status: o.status, body: o.body }, 'err'); return; }
+  if (!Array.isArray(o.body) || !o.body.length) { render(el, '暂无订单，先下单试试。'); return; }
+  el.className = 'result ok';
+  el.textContent = '我的订单：\n' + o.body.map(function (x) {
+    return '#' + x.id + '  status=' + x.status + '  ' + x.order_no;
+  }).join('\n');
+}
+
+/* ---------- ④ WebSocket ---------- */
+function wsLog(cls, text) {
+  const box = $('wsStream');
+  const t = new Date().toLocaleTimeString('zh-CN', { hour12: false });
+  const div = document.createElement('div');
+  div.className = 'msg ' + cls;
+  div.innerHTML = '<span class="t">' + t + '</span>' + text;
+  box.appendChild(div);
+  box.scrollTop = box.scrollHeight;
+}
+
+function connectWs() {
+  if (!state.accessToken) { $('wsHint').textContent = '请先在「① 双 Token」里登录。'; return; }
+  exitWs();
+  const url = 'ws://localhost:8080/ws/orders?token=' + encodeURIComponent(state.accessToken);
+  const ws = new WebSocket(url);
+  state.ws = ws;
+  ws.onopen = function () {
+    $('dotWs').className = 'dot on'; $('txtWs').textContent = '已连接';
+    wsLog('sys', '连接已建立');
+    $('wsHint').textContent = '已连接。订单被取消时这里会实时收到推送。';
+  };
+  ws.onmessage = function (e) {
+    try {
+      const msg = JSON.parse(e.data);
+      if (msg.type === 'CONNECTED') wsLog('sys', '服务器确认：userId=' + msg.userId);
+      else if (msg.type === 'PONG') wsLog('sys', 'PONG（心跳正常）');
+      else if (msg.type === 'ORDER_STATUS') wsLog('push', '📨 订单 #' + msg.orderId + ' → status=' + msg.status + '（' + msg.message + '）');
+      else wsLog('push', e.data);
+    } catch (err) { wsLog('push', e.data); }
+  };
+  ws.onclose = function () {
+    $('dotWs').className = 'dot off'; $('txtWs').textContent = '已断开';
+    wsLog('sys', '连接关闭');
+  };
+  ws.onerror = function () { wsLog('sys', '连接出错（检查是否已登录 / token 是否过期）'); };
+}
+
+function exitWs() {
+  if (state.ws) { try { state.ws.close(); } catch (e) {} state.ws = null; }
+}
+function disconnectWs() { exitWs(); $('wsHint').textContent = '已断开。'; }
+function pushTest() {
+  if (!state.ws || state.ws.readyState !== WebSocket.OPEN) { $('wsHint').textContent = '先点「连接 WebSocket」。'; return; }
+  state.ws.send('PING');
+}
+
+/* ---------- 网关：限流 / 熔断 ---------- */
+function openNacos() { window.open('http://localhost:8848/nacos', '_blank'); }
+
+async function doRateLimitTest() {
+  const el = $('rlResult'), hint = $('rlHint');
+  if (!state.accessToken) { render(el, { 错误: '请先在标签页 A 登录' }, 'err'); return; }
+  const n = Math.min(200, Math.max(1, Number($('rlCount').value) || 20));
+  render(el, '通过网关连发 ' + n + ' 个请求到 /api/order/my …');
+  const start = performance.now();
+  const results = await Promise.all(Array.from({ length: n }, function () {
+    return api(GW, '/api/order/my', { cache: 'no-store' }).catch(function () {
+      return { status: 0, ok: false, body: {} };
+    });
+  }));
+  const cost = Math.round(performance.now() - start);
+  const counts = {};
+  let limited = 0;
+  results.forEach(function (r) {
+    counts[r.status] = (counts[r.status] || 0) + 1;
+    if (r.status === 429) limited++;
+  });
+  const lines = ['请求数: ' + n + '   总耗时: ' + cost + 'ms', '状态码分布:'];
+  Object.keys(counts).sort().forEach(function (k) {
+    const label = k === '200' ? '✅ 放行' : (k === '429' ? '🛑 被限流' : (k === '503' ? '⚡ 熔断降级' : '❓'));
+    lines.push('  ' + k + ' ' + label + ' → ' + counts[k] + ' 次');
+  });
+  lines.push('');
+  if (limited > 0) {
+    lines.push('✅ 限流已触发：放行 ' + (n - limited) + ' 个，其余被挡在网关（没打到下游）。');
+    lines.push('规则 /api/order/**：按用户 2 次/秒，突发容量 5。');
+    lines.push('去 Nacos 改 lab-gateway-ratelimit.yaml 的 capacity，热更新立即生效。');
+    el.className = 'result ok';
+  } else {
+    lines.push('ℹ️ 本次没触发限流。多点几次或调大请求数 —— 令牌桶按时间补充令牌。');
+    el.className = 'result';
+  }
+  el.textContent = lines.join('\n');
+  hint.textContent = '被限流的响应带 X-RateLimit-* 与 Retry-After。';
+}
+
+function setBreakerState(s) {
+  const el = $('cbState');
+  if (el && s) { el.textContent = s; el.className = 'state ' + s; }
+  const t = $('txtBreaker');
+  if (t && s) t.textContent = '熔断器: ' + s;
+}
+
+async function queryBreaker() {
+  const el = $('cbResult');
+  try {
+    const r = await fetch(GW + '/gateway/state', { cache: 'no-store' });
+    const j = await r.json();
+    setBreakerState(j.circuitState);
+    render(el, {
+      circuitState: j.circuitState,
+      说明: j.circuitState === 'CLOSED' ? '正常放行'
+        : (j.circuitState === 'OPEN' ? '熔断中，所有请求直接降级' : '半开，放行少量试探请求'),
+      HTTP: r.status
+    }, 'ok');
+  } catch (e) {
+    render(el, { error: '网关不可达', detail: String(e) }, 'err');
+  }
+}
+
+async function doImpactTest() {
+  const el = $('cbResult'), hint = $('cbHint');
+  if (!state.accessToken) { render(el, { 错误: '请先在标签页 A 登录' }, 'err'); return; }
+  render(el, '通过网关联发 10 个请求，观察熔断器状态变化…');
+  const results = await Promise.all(Array.from({ length: 10 }, function () {
+    return api(GW, '/api/order/my').catch(function () { return { status: 0 }; });
+  }));
+  const ok = results.filter(function (r) { return r.status === 200; }).length;
+  const deg = results.filter(function (r) { return r.status === 503; }).length;
+  let st = { circuitState: 'UNKNOWN' };
+  try { st = await fetch(GW + '/gateway/state').then(function (r) { return r.json(); }); } catch (e) {}
+  setBreakerState(st.circuitState);
+  render(el, {
+    成功: ok,
+    降级: deg,
+    当前熔断状态: st.circuitState,
+    说明: '下游故障时失败率超 50% 会打开熔断；等待 10 秒进 HALF_OPEN 试探'
+  }, ok > 0 ? 'ok' : 'err');
+  hint.textContent = '想看熔断真正打开：停掉 app 服务，再点这个按钮。';
+}
+</script>
+</body>
+</html>
